@@ -143,6 +143,21 @@ $(document).ready(function() {
     equal(view.$el.text(), 'evian');
   });
 
+  test('bindings as a function', 2, function() {
+
+    model.set({'water':'fountain'});
+    view.model = model;
+    view.templateId = 'jst1';
+    view.bindings = function() {
+      return {'#test1':'water'};
+    };
+    $('#qunit-fixture').html(view.render().el);
+
+    equal(view.$('#test1').val(), 'fountain');
+    view.$('#test1').val('dasina').trigger('change');
+    equal(model.get('water'), 'dasina');
+  });
+
   test('stickit (shorthand bindings)', function() {
     model.set({'water':'fountain'});
     view.model = model;
@@ -222,7 +237,7 @@ $(document).ready(function() {
 
   test('stickit (existing events property as hash with multiple models and bindings)', function() {
 
-    var model1, testView;
+    var model1, model2, testView;
 
     model1 = new (Backbone.Model)({id:1, candy:'twix' });
     model2 = new (Backbone.Model)({id:2, candy:'snickers'});
@@ -284,7 +299,7 @@ $(document).ready(function() {
 
   test('stickit (existing events property as function with multiple models and bindings)', function() {
 
-    var model1, testView;
+    var model1, model2, testView;
 
     model1 = new (Backbone.Model)({id:1, candy:'twix' });
     model2 = new (Backbone.Model)({id:2, candy:'snickers'});
@@ -449,6 +464,54 @@ $(document).ready(function() {
     equal(view.$('#test1').val(), '');
     view.$('#test1').val(30).trigger('change');
     equal(model.get('duration'), null);
+  });
+
+  test('bindings:onSet (returning array of observed values)', 2, function() {
+
+    model.set({'water':'fountain', 'candy':'skittles'});
+    view.model = model;
+    view.templateId = 'jst1';
+    view.bindings = {
+      '#test1': {
+        observe: ['water', 'candy'],
+        onGet: function(val, options) {
+          return model.get(options[0]) + '-' + model.get(options[1]);
+        },
+        onSet: function(val, options) {
+          return val.split('-');
+        }
+      }
+    };
+
+    $('#qunit-fixture').html(view.render().el);
+
+    view.$('#test1').val('evian-kitkat').trigger('change');
+    equal(model.get('water'), 'evian');
+    equal(model.get('candy'), 'kitkat');
+  });
+
+  test('bindings:set', 5, function() {
+
+    model.set({'water':'fountain'});
+    view.model = model;
+    view.templateId = 'jst1';
+    view.bindings = {
+      '#test1': {
+        observe: 'water',
+        set: function(attr, val, options, config) {
+          equal(attr, 'water');
+          equal(val, 'evian');
+          equal(options.stickitChange.observe, attr);
+          equal(config.observe, attr);
+          model.set(attr, val);
+        }
+      }
+    };
+
+    $('#qunit-fixture').html(view.render().el);
+
+    view.$('#test1').val('evian').trigger('change');
+    equal(model.get('water'), 'evian');
   });
 
   test('bindings:afterUpdate', 14, function() {
@@ -1217,7 +1280,7 @@ test('bindings:selectOptions:defaultOption:OptGroups', 8, function() {
     equal(Number(view.$('#test11').val()), 2);
   });
 
-  test('visible', 25, function() {
+  test('visible', 28, function() {
 
     model.set({'water':false, 'candy':'twix', 'costume':false, 'visible': 'yes'});
     view.model = model;
@@ -1248,6 +1311,10 @@ test('bindings:selectOptions:defaultOption:OptGroups', 8, function() {
         observe: 'visible',
         visible: function(val) { return val == 'yes'; },
         updateView: true
+      },
+      '#test14-5': {
+        observe: 'visible',
+        visible: function(val) { return val; }
       }
     };
     $('#qunit-fixture').html(view.render().el);
@@ -1258,6 +1325,11 @@ test('bindings:selectOptions:defaultOption:OptGroups', 8, function() {
     equal(view.$('#test14-3').css('display') == 'block' , true);
     equal(view.$('#test14-4').css('display') == 'block' , true);
     equal(view.$('#test14-4').text(), 'yes');
+    equal(view.$('#test14-5').css('display') == 'block' , true);
+
+    // Force-hide #test14-5 to make sure the fact that it's still visible
+    // later is due to the truthiness check.
+    view.$('#test14-5').hide()
 
     model.set('water', true);
     model.set('candy', 'snickers');
@@ -1270,6 +1342,14 @@ test('bindings:selectOptions:defaultOption:OptGroups', 8, function() {
     equal(view.$('#test14-3').css('display') == 'block' , true);
     equal(view.$('#test14-4').css('display') == 'block' , false);
     equal(view.$('#test14-4').text(), 'no');
+
+    // 'no' is still truthy.
+    equal(view.$('#test14-5').css('display') == 'block' , true);
+
+    model.set('visible', false);
+
+    equal(view.$('#test14-5').css('display') == 'block' , false);
+
   });
 
   test('observe (multiple; array)', 12, function() {
@@ -1364,7 +1444,7 @@ test('bindings:selectOptions:defaultOption:OptGroups', 8, function() {
     equal(view.$('#test1').val(), 'evian');
   });
 
-  test('bindings:updateModel', 6, function() {
+  test('bindings:updateModel', 10, function() {
 
     model.set({'water':'fountain'});
     view.model = model;
@@ -1372,9 +1452,11 @@ test('bindings:selectOptions:defaultOption:OptGroups', 8, function() {
     view.bindings = {
       '#test1': {
         observe: 'water',
-        updateModel: function(val, options) {
+        updateModel: function(val, event, options) {
+          equal(this.cid, view.cid);
           equal(val, view.$('#test1').val());
           equal(options.observe, 'water');
+          equal(event.type, 'change');
           return val == 'evian';
         }
       }
@@ -1458,7 +1540,7 @@ test('bindings:selectOptions:defaultOption:OptGroups', 8, function() {
     equal(model.get('water'), null);
   });
 
-  test('getVal', 4, function() {
+  test('getVal', 5, function() {
 
     model.set({'water':'fountain'});
     view.model = model;
@@ -1467,6 +1549,7 @@ test('bindings:selectOptions:defaultOption:OptGroups', 8, function() {
       '#test1': {
         observe: 'water',
         getVal: function($el, event, options) {
+          equal(this.cid, view.cid);
           equal($el.attr('id'), 'test1');
           equal(event.type, 'change');
           equal(options.observe, 'water');

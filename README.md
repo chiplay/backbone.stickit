@@ -1,4 +1,4 @@
-[-> **Documentation for current/stable release: 0.6.3**](http://nytimes.github.com/backbone.stickit/)
+[-> **Documentation for current/stable release: 0.7.0**](http://nytimes.github.com/backbone.stickit/)
 
 **The following is documentation for the code in master/edge version...**
 
@@ -10,7 +10,7 @@ Stickit is a Backbone data binding plugin that binds Model attributes to View el
 
 ## Download + Source
 
-[download v0.6.3](http://nytimes.github.com/backbone.stickit/downloads/backbone.stickit_0.6.3.zip)
+[download v0.7.0](http://nytimes.github.com/backbone.stickit/downloads/backbone.stickit_0.7.0.zip)
 
 [download master/edge](https://raw.github.com/NYTimes/backbone.stickit/master/backbone.stickit.js)
 
@@ -64,7 +64,7 @@ For each model that is unbound a `stickit:unstuck` event will be triggered.
 
 ## Bindings
 
-The `view.bindings` is a hash of jQuery or Zepto selector keys with binding configuration values. Similar to the callback definitions configured in `view.events`, bindings callbacks can be defined as the name of a method on the view or a direct function body.
+The `view.bindings` is a hash of jQuery or Zepto selector keys with binding configuration values. Similar to the callback definitions configured in `view.events`, bindings callbacks can be defined as the name of a method on the view or a direct function body. `view.bindings` may also be defined as a function.
 
 Once you are familiarized with the bindings callbacks, use [this reference](#binding-callbacks-flowchart) for a better idea of when they are called.
 
@@ -72,7 +72,7 @@ Once you are familiarized with the bindings callbacks, use [this reference](#bin
 
 A string, function, or array which is used to map a model attribute to a view element. If binding to `observe` is the only configuration needed, then it can be written in short form where the attribute name is the value of the whole binding configuration.
 
-Note, binding to multiple model attributes using an array configuration only applies to one-way bindings (model->view), and should be paired with an `onGet` callback.
+Notes on binding to an array of attributes: when binding from model->view, this configuration should be paired with an `onGet` callback that can unpack/format the values. When binding from view->model, then `onSet` or `getVal` should be defined and should return an array of values that stickit will set into the model. 
 
 ```javascript  
   bindings: {
@@ -94,7 +94,10 @@ Note, binding to multiple model attributes using an array configuration only app
       observe: ['title', 'author'],
       onGet: function(values) {
         // onGet called after title *or* author model attributes change.
-        return values[0] + ', by ' + values[1];
+        return values[0] + '-' + values[1];
+      },
+      onSet: function(value) {
+        return value.split('-');
       }
     }
   }
@@ -183,7 +186,7 @@ A boolean value or a function that returns a boolean value which controls whethe
       updateModel: 'confirmFormat'
     }
   },
-  confirmFormat: function(val, options) {
+  confirmFormat: function(val, event, options) {
     // Only update the title attribute if the value starts with "by".
     return val.startsWith('by ');
   }
@@ -319,7 +322,7 @@ If more than the standard jQuery show/hide is required, then you can manually ta
 
 ## Form Element Bindings and Contenteditable
 
-By default, form and contenteditable elements will be configured with two-way bindings, syncing changes in the view elements with model attributes. Optionally, one-way bindings can be configured with `updateView` or `updateModel`. With the `eventsOverride`, you can specify a different set of events to use for reflecting changes to the model.
+By default, form and contenteditable elements will be configured with two-way bindings, syncing changes in the view elements with model attributes. Optionally, one-way bindings can be configured with `updateView` or `updateModel`. With the `events`, you can specify a different set of events to use for reflecting changes to the model.
 
 The following is a list of the supported form elements, their binding details, and the default events used for binding:  
 
@@ -637,7 +640,7 @@ If you are writing a custom frontend, then you're going to need to write custom 
 
 ### Dependencies
 
- Backbone 0.9, underscore.js, and jQuery or Zepto (with data module; see `selectOptions`)
+ Backbone 1.0, underscore.js, and jQuery or Zepto (with data module; see `selectOptions`)
 
 ### License
 
@@ -645,19 +648,25 @@ MIT
 
 ## Change Log
 
-#### Master
+#### 0.7.0
 
 - **Breaking Change**: the `bindKey` that was passed into the Backbone `change:attr` (undocumented) options was changed to `stickitChange` which is assigned the binding options which have a unique `bindId`.
-- **Breaking Change**: the default events for input, textarea, and contenteditable form elements from [`keyup`, `cut`, `paste`, `change`] to [`propertychange`, `input`, `change`].
+- **Breaking Change**: the default events for input, textarea, and contenteditable form elements changed from [`keyup`, `cut`, `paste`, `change`] to [`propertychange`, `input`, `change`].
 - **Breaking Change**: removed support for `input[type="number"]`. Instead, use `onSet` to format Number values, if needed.
+- **Breaking Change**: The `updateModel` method parameters changed so the `event` is now passed as the second parameter. `updateModel(val, options)` -> `updateModel(val, event, options)`
+- Stickit will now load using the UMD pattern so it is compatible with AMD, Node.js, and CommonJS.
+- A view's `bindings` configuration can be defined as a function.
+- When observing an array, if `onSet` or `getVal` return an array of values, Stickit will match the values to their respective attributes defined in `observe` and set them in the model. If you don't desire this change, then you can override this behavior with the following change:
+- Added a `set` callback which by default calls `model#set`
 - Added the `destroy` binding callback to compliment `initialize`.
 - Trigger `stickit:unstick` for each model that is unbound in `unstickit` (or `view.remove`).
-- Fixed a bug where "null" would show in Chrome when binding `attribute:null` to an element value.
-- Fixed a bug where optgroup `<select>` handlers were rendering multiple `collection.defaultOptions`.
 - Added handling for `observe` in function form.
 - When binding with `visible` the `{updateView:false}` property is defaulted.
 - Stickit will no longer sanitize (convert a `null`/`undefined` model attribute value to empty string) values if `onGet` is defined.
+- Added support for the use of dot-notation in binding callbacks that are defined with a string that names a method on the view. For example - `onGet: "myObj.myCallback"`.
 - Added Backbone.Stickit.getConfiguration which exposes the method of deriving configurations from handlers.
+- Fixed a bug where "null" would show in Chrome when binding `attribute:null` to an element value.
+- Fixed a bug where optgroup `<select>` handlers were rendering multiple `collection.defaultOptions`.
 
 #### 0.6.3
 
